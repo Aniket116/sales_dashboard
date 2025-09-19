@@ -1,10 +1,8 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
+/* The #root style block has been removed from this file as it was causing
+  the unwanted empty space on the sides by setting a max-width. The necessary
+  resets are now handled in index.css.
+*/
+@import "tailwindcss";
 .logo {
   height: 6em;
   padding: 1.5em;
