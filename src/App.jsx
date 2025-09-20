@@ -684,95 +684,6 @@ function Dashboard(onLogout) {
         getInitialData();
     }, []);
 
-    // useEffect(() => {
-    //     // Helper function to efficiently fetch all unique values for a specific column
-    //     async function fetchDistinct(column) {
-    //         let distinctValues = new Set();
-    //         let page = 0;
-    //         const pageSize = 1000;
-    //         let hasMore = true;
-
-    //         while (hasMore) {
-    //             const { data, error } = await supabase
-    //                 .from('new_sales_data')
-    //                 .select(column)
-    //                 .range(page * pageSize, (page + 1) * pageSize - 1);
-
-    //             if (error) {
-    //                 console.error(`Error fetching distinct ${column}:`, error);
-    //                 return Array.from(distinctValues); // Return what we have so far
-    //             }
-    //             if (data && data.length > 0) {
-    //                 data.forEach(item => {
-    //                     if (item && item[column]) {
-    //                         distinctValues.add(item[column]);
-    //                     }
-    //                 });
-    //                 page++;
-    //             } else {
-    //                 hasMore = false;
-    //             }
-    //         }
-    //         return Array.from(distinctValues);
-    //     }
-
-    //     async function getInitialData() {
-    //         setLoading(true);
-
-    //         // Step 1: Fetch all unique categories and regions for filters
-    //         const [uniqueCategories, uniqueRegions] = await Promise.all([
-    //             fetchDistinct('Category'),
-    //             fetchDistinct('Region')
-    //         ]);
-            
-    //         setCategories(uniqueCategories.sort());
-    //         setRegions(uniqueRegions.sort());
-
-    //         // Step 2: Fetch the latest data for stable "Current Inventory" metrics
-    //         const { data: latestDateData, error: latestDateError } = await supabase.from('new_sales_data').select('Date').order('Date', { ascending: false }).limit(1);
-    //         if (latestDateError || !latestDateData.length) {
-    //             setError('Could not determine the latest date for inventory.');
-    //             setLoading(false);
-    //             return;
-    //         }
-    //         const latestDate = latestDateData[0].Date;
-    //         const { data: latestInventoryData, error: latestInventoryError } = await supabase.from('new_sales_data').select('*').eq('Date', latestDate);
-    //         if (latestInventoryError) {
-    //             setError('Could not fetch latest inventory data.');
-    //             setLoading(false);
-    //             return;
-    //         }
-    //         setAllSalesData(latestInventoryData || []);
-
-    //         // Step 3: Set initial date range to the last week of August 2025
-    //         const initialStartDate = '2025-08-25';
-    //         const initialEndDate = '2025-08-31';
-            
-    //         setFilterInputs({
-    //             dateRange: { start: initialStartDate, end: initialEndDate },
-    //             selectedCategories: uniqueCategories,
-    //             selectedRegions: uniqueRegions,
-    //         });
-            
-    //         setAppliedFilters({
-    //             dateRange: { start: initialStartDate, end: initialEndDate },
-    //             selectedCategories: uniqueCategories,
-    //             selectedRegions: uniqueRegions,
-    //         });
-
-    //         // Step 4: Fetch forecast data
-    //         const FORECAST_CSV_URL = 'https://feqnxbahwsomdociezti.supabase.co/storage/v1/object/public/forecast/forecast_output.csv';
-    //         Papa.parse(FORECAST_CSV_URL, {
-    //             download: true, header: true, dynamicTyping: true,
-    //             complete: (result) => setForecastData(result.data),
-    //             error: (err) => console.error("Error loading forecast CSV:", err)
-    //         });
-    //     }
-    //     getInitialData();
-    // }, []);
-
-    // RESOLVED: Implemented a fully paginated fetch for the filtered data.
-    // This will retrieve ALL records that match the filter, not just the first 1000.
     const fetchDataForFilters = useCallback(async () => {
         if (!appliedFilters) return;
         setLoading(true);
@@ -1028,7 +939,10 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
                         }} />
                     </div>
                     <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <ChartContainer title="Financial Trend (Revenue & Profit)" desc={kpiDescriptions.financialTrend}><ResponsiveContainer width="100%" height={300}><LineChart data={trendData}><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} /><XAxis dataKey="date" fontSize={10} stroke="#a0aec0" /><YAxis yAxisId="left" stroke="#8884d8" tickFormatter={(val) => `$${(val/1000).toLocaleString()}K`} /><YAxis yAxisId="right" orientation="right" stroke="#82ca9d" tickFormatter={(val) => `$${(val/1000).toLocaleString()}K`} /><Tooltip contentStyle={{ backgroundColor: '#2d3748', border: '1px solid #4a5568' }} /><Legend /><Line yAxisId="left" type="monotone" dataKey="Revenue" stroke="#8884d8" dot={false} /><Line yAxisId="right" type="monotone" dataKey="Profit" stroke="#82ca9d" dot={false} /></LineChart></ResponsiveContainer></ChartContainer>
+                        <ChartContainer title="Financial Trend (Revenue & Profit)" desc={kpiDescriptions.financialTrend}><ResponsiveContainer width="100%" height={300}><LineChart data={trendData}><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} /><XAxis dataKey="date" fontSize={10} stroke="#a0aec0" /><YAxis yAxisId="left" stroke="#8884d8" tickFormatter={(val) => `$${(val/1000).toLocaleString()}K`} /><YAxis yAxisId="right" orientation="right" stroke="#82ca9d" tickFormatter={(val) => `$${(val/1000).toLocaleString()}K`} />  <Tooltip 
+                contentStyle={{ backgroundColor: '#2d3748', border: '1px solid #4a5568' }} 
+                formatter={(value) => `$${parseFloat(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
+            /><Legend /><Line yAxisId="left" type="monotone" dataKey="Revenue" stroke="#8884d8" dot={false} /><Line yAxisId="right" type="monotone" dataKey="Profit" stroke="#82ca9d" dot={false} /></LineChart></ResponsiveContainer></ChartContainer>
                         <ChartContainer title="Sales Composition by Category" desc={kpiDescriptions.salesComposition}><ResponsiveContainer width="100%" height={300}><PieChart><Pie data={compositionData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} label>{compositionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip contentStyle={{ backgroundColor: '#2d3748', border: '1px solid #4a5568' }} formatter={(value) => value.toLocaleString()} /><Legend /></PieChart></ResponsiveContainer></ChartContainer>
                         <ChartContainer title="Regional Performance (Revenue)" desc={kpiDescriptions.regionalPerformance}><ResponsiveContainer width="100%" height={300}><BarChart data={regionalData}><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} /><XAxis dataKey="name" stroke="#a0aec0" /><YAxis stroke="#a0aec0" tickFormatter={(val) => `$${(val/1000).toLocaleString()}K`} /><Tooltip contentStyle={{ backgroundColor: '#2d3748', border: '1px solid #4a5568' }} formatter={(value) => `$${value.toLocaleString()}`} /><Legend /><Bar dataKey="Revenue" fill="#8884d8" /></BarChart></ResponsiveContainer></ChartContainer>
                         <ChartContainer title="Demand vs. Fulfillment" desc={kpiDescriptions.demandVsFulfillment}><ResponsiveContainer width="100%" height={300}><AreaChart data={demandData}><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} /><XAxis dataKey="date" fontSize={10} stroke="#a0aec0" /><YAxis stroke="#a0aec0" /><Tooltip contentStyle={{ backgroundColor: '#2d3748', border: '1px solid #4a5568' }} formatter={(value) => value.toLocaleString()} /><Legend /><Area type="monotone" dataKey="Units Sold" stackId="1" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} /><Area type="monotone" dataKey="Demand" stackId="1" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} /></AreaChart></ResponsiveContainer></ChartContainer>
