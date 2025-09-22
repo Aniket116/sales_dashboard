@@ -312,6 +312,14 @@ const ForecastChart = () => {
         document.body.removeChild(link);
     };
 
+    const forecastTotals = useMemo(() => {
+        return chartData.reduce((acc, row) => {
+            acc.totalRevenue += row.Revenue_Forecast || 0;
+            acc.totalUnits += row.Units_Sold_Forecast || 0;
+            return acc;
+        }, { totalRevenue: 0, totalUnits: 0 });
+    }, [chartData]);
+
     return (
         <div className="bg-gray-800 p-4 rounded-lg shadow-md">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
@@ -353,6 +361,12 @@ const ForecastChart = () => {
                             <Line type="monotone" dataKey="Revenue_Forecast" name="Revenue Forecast" stroke="#8884d8" strokeWidth={2} dot={false} />
                         </LineChart>
                     </ResponsiveContainer>
+                    <div className="text-center mt-3">
+                        <p className="text-gray-400 text-sm">Total Forecasted Revenue:</p>
+                        <p className="text-white text-2xl font-bold">
+                            ${forecastTotals.totalRevenue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Chart 2: Demand Forecast */}
@@ -371,6 +385,12 @@ const ForecastChart = () => {
                             <Line type="monotone" dataKey="Units_Sold_Forecast" name="Demand Forecast" stroke="#82ca9d" strokeWidth={2} dot={false} />
                         </LineChart>
                     </ResponsiveContainer>
+                    <div className="text-center mt-3">
+                        <p className="text-gray-400 text-sm">Total Forecasted Demand:</p>
+                        <p className="text-white text-2xl font-bold">
+                            {forecastTotals.totalUnits.toLocaleString()} Units
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

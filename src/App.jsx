@@ -1012,6 +1012,7 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
                                     { metric: 'Stock-to-Sales Ratio', value: (inventoryMetrics.stockToSalesRatio || 0).toFixed(2), desc: kpiDescriptions.stockToSalesRatio },
                                     { metric: 'Avg. Inventory Level', value: (inventoryMetrics.avgInventoryLevel || 0).toLocaleString('en-US', {maximumFractionDigits: 0}), desc: kpiDescriptions.avgInventoryLevel },
                                     { metric: 'Inventory Turnover', value: (inventoryMetrics.inventoryTurnover || 0).toFixed(2), desc: kpiDescriptions.inventoryTurnover },
+                                    { metric: 'Inventory Turnover Rate', value: (inventoryMetrics.inventoryTurnover/inventoryMetrics.avgInventoryLevel || 0).toFixed(2) },
                                 ]
                             }} />
                         </div>
@@ -1026,7 +1027,7 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
                      <ForecastChart />
                 </section>
             </main>
-            <Chatbot historicalData={salesData} /> 
+            <Chatbot historicalData={salesData} forecastData={forecastData} /> 
             </div>
         </div>
     );
