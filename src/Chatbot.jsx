@@ -247,16 +247,19 @@ const Chatbot = ({ forecastData }) => {
         You are a data analysis planner. Your job is to understand a user's question and create a JSON plan to answer it.
         First, classify the question into "historical", "forecast", or "general".
 
-        1.  **If the question is about past or current data** (e.g., "total sales", "average inventory"), the type is "historical".
+        1.  **If the question is about past or current data** (e.g., "total sales"), the type is "historical".
             -   The plan queries a Supabase table named "new_sales_data".
             -   JSON must have: "queryType": "historical", "select", "filters", and "operation".
 
-        2.  **If the question is about future data** (e.g., "what is the forecast", "predict sales"), the type is "forecast".
+        2.  **If the question is about future data** (e.g., "what is the forecast"), the type is "forecast".
             -   The plan processes a local array of forecast data.
-            -   **Available forecast columns: "Date", "Category", "Revenue_Forecast", "Units_Sold_Forecast".**
-            -   JSON must have: "queryType": "forecast", "operation" (with method and column), "timeframeInDays", and "category" (which can be null if not specified).
+            -   Available forecast columns: "Date", "Category", "Revenue_Forecast", "Units_Sold_Forecast".
+            -   Valid Categories are: "Clothing", "Electronics", "Furniture", "Groceries", "Toys".
+            -   JSON must have: "queryType": "forecast", "operation", "timeframeInDays", and "categories" (an array of strings).
+            -   If the user specifies one or more categories, put them in the "categories" array.
+            -   If the user asks for "all categories" or does not specify any, the "categories" array should be empty or null.
             -   If the user asks for "demand forecast", the target column is "Units_Sold_Forecast".
-            -   If the user asks for "sales forecast", the target column is "Revenue_Forecast".
+            -   If the user asks for "sales forecast" or "revenue forecast", the target column is "Revenue_Forecast".
 
         3.  **If the question is general conversation**, the type is "general".
             -   JSON must have: "queryType": "general".
@@ -266,10 +269,13 @@ const Chatbot = ({ forecastData }) => {
         Result: {"queryType": "historical", "select": "Revenue", "filters": [{"column": "Category", "operator": "eq", "value": "Toys"}], "operation": {"method": "SUM", "column": "Revenue"}}
 
         User Question: "what is the total sales forecast for the next 30 days for electronics?"
-        Result: {"queryType": "forecast", "operation": {"method": "SUM", "column": "Revenue_Forecast"}, "timeframeInDays": 30, "category": "Electronics"}
+        Result: {"queryType": "forecast", "operation": {"method": "SUM", "column": "Revenue_Forecast"}, "timeframeInDays": 30, "categories": ["Electronics"]}
 
-        User Question: "predict the average demand for next week for all categories"
-        Result: {"queryType": "forecast", "operation": {"method": "AVG", "column": "Units_Sold_Forecast"}, "timeframeInDays": 7, "category": null}
+        User Question: "predict the average demand for next week for toys and clothing"
+        Result: {"queryType": "forecast", "operation": {"method": "AVG", "column": "Units_Sold_Forecast"}, "timeframeInDays": 7, "categories": ["Toys", "Clothing"]}
+
+        User Question: "what is the demand forecast for all categories next month?"
+        Result: {"queryType": "forecast", "operation": {"method": "SUM", "column": "Units_Sold_Forecast"}, "timeframeInDays": 30, "categories": null}
         
         User Question: "hello"
         Result: {"queryType": "general"}
@@ -311,9 +317,12 @@ const Chatbot = ({ forecastData }) => {
           
           // --- FIX: Added logic to filter by category first ---
           let categoryFilteredData = forecastData;
-          if (plan.category) {
-            categoryFilteredData = forecastData.filter(row => row.Category === plan.category);
-            if (categoryFilteredData.length === 0) throw new Error(`No forecast data found for the category: ${plan.category}`);
+          if (plan.categories && Array.isArray(plan.categories) && plan.categories.length > 0) {
+              const lowerCaseCategories = plan.categories.map(c => c.toLowerCase());
+              categoryFilteredData = forecastData.filter(row => 
+                  row.Category && lowerCaseCategories.includes(row.Category.toLowerCase())
+              );
+              if (categoryFilteredData.length === 0) throw new Error(`No forecast data found for the specified categories.`);
           }
 
           const timeframeData = categoryFilteredData.slice(0, plan.timeframeInDays || 30);
