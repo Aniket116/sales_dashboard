@@ -518,6 +518,26 @@
 // );
 // export default App;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import {
@@ -674,7 +694,7 @@ function Dashboard(onLogout) {
             });
 
             // Step 4: Fetch forecast data
-            const FORECAST_CSV_URL = 'https://feqnxbahwsomdociezti.supabase.co/storage/v1/object/public/forecast/forecast_output.csv';
+            const FORECAST_CSV_URL = 'https://feqnxbahwsomdociezti.supabase.co/storage/v1/object/public/forecast/forecast_output_revenue_and_units.csv';
             Papa.parse(FORECAST_CSV_URL, {
                 download: true, header: true, dynamicTyping: true,
                 complete: (result) => setForecastData(result.data),
@@ -816,42 +836,60 @@ const { productPerformance, inventoryRiskAnalysis, inventoryMetrics } = useMemo(
         };
 
         let inventoryRiskData = [];
-        if (forecastData.length > 0 && allSalesData.length > 0) {
-            const SAFE_DAYS_OF_SUPPLY = 45;
-            const totalHistoricalSales = allSalesData.reduce((sum, item) => sum + (parseInt(item['Units Sold'], 10) || 0), 1);
-            const categorySalesMix = allSalesData.reduce((acc, item) => {
-                const category = item.Category;
-                if (!acc[category]) acc[category] = 0;
-                acc[category] += parseInt(item['Units Sold'], 10) || 0;
-                return acc;
-            }, {});
-            Object.keys(categorySalesMix).forEach(cat => { categorySalesMix[cat] /= totalHistoricalSales });
-            
-            const next30DaysForecast = forecastData.slice(0, 30);
-            const totalForecastedDemand = next30DaysForecast.reduce((sum, item) => sum + (item.Demand_Forecast || 0), 0);
-            
-            const inventoryByCategory = allSalesData.reduce((acc, item) => {
-                const category = item.Category;
-                if (!acc[category]) acc[category] = 0;
-                acc[category] += parseInt(item['Inventory Level'], 10) || 0;
-                return acc;
-            }, {});
+    if (forecastData.length > 0 && allSalesData.length > 0) {
+        const SAFE_DAYS_OF_SUPPLY = 45;
 
-            inventoryRiskData = Object.keys(inventoryByCategory).map(category => {
-                const currentInventory = inventoryByCategory[category];
-                const forecastedDemand = totalForecastedDemand * (categorySalesMix[category] || 0);
-                const forecastedDailyDemand = forecastedDemand / 30;
-                const daysOfSupply = forecastedDailyDemand > 0 ? currentInventory / forecastedDailyDemand : Infinity;
-                let riskLevel = 'Low';
-                if (daysOfSupply < 15) riskLevel = 'High';
-                else if (daysOfSupply < 30) riskLevel = 'Medium';
-                const suggestedRestock = Math.max(0, Math.round((SAFE_DAYS_OF_SUPPLY * forecastedDailyDemand) - currentInventory));
-                return { category, currentInventory, forecastedDemand: Math.round(forecastedDemand), riskLevel, suggestedRestock };
-            });
-        }
-        
-        return { productPerformance: productPerformanceData, inventoryRiskAnalysis: inventoryRiskData, inventoryMetrics: inventoryMetricsData };
-    }, [allSalesData, salesData, forecastData]);
+        // 1. Get current inventory levels for each category from the latest day's data.
+        const inventoryByCategory = allSalesData.reduce((acc, item) => {
+            const category = item.Category;
+            if (!acc[category]) acc[category] = 0;
+            acc[category] += parseInt(item['Inventory Level'], 10) || 0;
+            return acc;
+        }, {});
+
+        // 2. Pre-calculate the total 30-day forecast for each category.
+        const categoryForecastTotals = forecastData.reduce((acc, row) => {
+            const category = row.Category;
+            if (!acc[category]) {
+                acc[category] = { totalDemand: 0, count: 0 };
+            }
+            // Only consider the first 30 days of forecast for each category
+            if (acc[category].count < 30) {
+                acc[category].totalDemand += row.Units_Sold_Forecast || 0;
+                acc[category].count++;
+            }
+            return acc;
+        }, {});
+
+        // 3. Calculate risk for each category using its specific forecast.
+        inventoryRiskData = Object.keys(inventoryByCategory).map(category => {
+            const currentInventory = inventoryByCategory[category];
+            
+            // Get the specific forecast total for this category
+            const forecastedDemand = categoryForecastTotals[category]?.totalDemand || 0;
+            
+            const forecastedDailyDemand = forecastedDemand / 30;
+            
+            const daysOfSupply = forecastedDailyDemand > 0 ? currentInventory / forecastedDailyDemand : Infinity;
+            
+            let riskLevel = 'Low';
+            if (daysOfSupply < 15) riskLevel = 'High';
+            else if (daysOfSupply < 30) riskLevel = 'Medium';
+            
+            const suggestedRestock = Math.max(0, Math.round((SAFE_DAYS_OF_SUPPLY * forecastedDailyDemand) - currentInventory));
+            
+            return { 
+                category, 
+                currentInventory, 
+                forecastedDemand: Math.round(forecastedDemand), 
+                riskLevel, 
+                suggestedRestock 
+            };
+        });
+    }
+    
+    return { productPerformance: productPerformanceData, inventoryRiskAnalysis: inventoryRiskData, inventoryMetrics: inventoryMetricsData };
+}, [allSalesData, salesData, forecastData]);
 
 const { trendData, compositionData, regionalData, demandData, inventoryTrendData, inventoryCompositionData } = useMemo(() => {
         const trendData = Object.values(salesData.reduce((acc, item) => {
@@ -1094,4 +1132,3 @@ const TableCard = ({ title, headers, data, emptyMessage, conditionalCellStyle })
 );
 
 export default App;
-
