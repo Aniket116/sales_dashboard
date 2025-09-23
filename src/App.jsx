@@ -540,6 +540,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from './supabaseClient';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, ScatterChart, Scatter,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell
@@ -549,6 +550,7 @@ import Chatbot from './Chatbot';
 import LoginPage from './LoginPage';
 import Papa from 'papaparse';
 import TopBar from './TopBar';
+import ManageDataPage from './ManageData'; 
 
 // --- Helper Components ---
 
@@ -952,10 +954,11 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
     if (error) return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><div className="text-xl text-red-400">{error}</div></div>
 
     return (
-        <div className="bg-gray-900 text-white min-h-screen p-4 md:p-8 font-sans">
+        <div >
           <TopBar onLogout={onLogout} />
-          <div className="pt-20 p-4 md:p-8" style={{marginTop:"2%"}}> 
-            <header className="mb-8"><h2 className="text-4xl font-bold text-white text-left">Comprehensive Sales & Inventory Dashboard</h2></header>
+          {/* <div className="pt-20 p-4 md:p-8" >  */}
+          <div>
+            <header className="mb-8"><h2 className="text-3xl font-bold text-white text-left">Comprehensive Sales & Inventory Dashboard</h2></header>
             <main className="space-y-8">
                 <section className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <div className="lg:col-span-1 flex flex-col gap-6">
@@ -1034,14 +1037,58 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
 }
 
 // --- App Wrapper for Authentication ---
+// function App() {
+//     const [isAuthenticated, setIsAuthenticated] = useState(false);
+//     const handleLogin = () => setIsAuthenticated(true);
+//     const handleLogout = () => setIsAuthenticated(false);
+
+//     // Pass the handleLogout function as a prop to the Dashboard
+//     return isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <LoginPage onLogin={handleLogin} />;
+// }
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const handleLogin = () => setIsAuthenticated(true);
-    const handleLogout = () => setIsAuthenticated(false);
+    
+    // Simple check to see if user is "logged in"
+    // In a real app, you might use localStorage or a more robust auth check
+    useEffect(() => {
+        const loggedIn = localStorage.getItem('isAuthenticated');
+        if (loggedIn === 'true') {
+            setIsAuthenticated(true);
+        }
+    }, []);
 
-    // Pass the handleLogout function as a prop to the Dashboard
-    return isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <LoginPage onLogin={handleLogin} />;
+    const handleLogin = () => {
+        localStorage.setItem('isAuthenticated', 'true');
+        setIsAuthenticated(true);
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('isAuthenticated');
+        setIsAuthenticated(false);
+    };
+
+    return (
+        <Router>
+            <Routes>
+                <Route path="/login" element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
+                <Route path="/*" element={isAuthenticated ? <AppLayout onLogout={handleLogout} /> : <Navigate to="/login" />} />
+            </Routes>
+        </Router>
+    );
 }
+const AppLayout = ({ onLogout }) => (
+    <div className="bg-gray-900 text-white min-h-screen">
+        <TopBar onLogout={onLogout} />
+        {/* This div provides the consistent padding for all pages */}
+        <div className="pt-24 px-4 md:px-8">
+            <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/manage-data" element={<ManageDataPage />} />
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+        </div>
+    </div>
+);
 
 // --- Reusable Components (Modified with InfoIcons) ---
 const FilterCard = ({ categories, regions, filterInputs, onCategoryChange, onRegionChange, onDateChange, onSubmit, loading }) => (
