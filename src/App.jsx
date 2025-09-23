@@ -1028,6 +1028,7 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
                  <section className="pt-8 border-t-2 border-gray-700">
                      <h2 className="text-3xl font-bold text-white mb-6 text-left">Future Forecast</h2>
                      <ForecastChart />
+                     <br></br>
                 </section>
             </main>
             <Chatbot historicalData={salesData} forecastData={forecastData} /> 
