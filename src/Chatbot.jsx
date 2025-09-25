@@ -200,14 +200,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient'; // Import your existing Supabase client
+import Papa from 'papaparse';
 
 // FIX: The component now accepts `forecastData` as a prop from the main App
-const Chatbot = ({ forecastData }) => {
+const Chatbot = () => {
+  const [forecastData, setForecastData] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null); // Ref for the textarea
+
 
   // --- Gemini API Configuration ---
  const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyAezt_I6fOFQXrw2bq8wG_E9Ia3UtHwtXc";
@@ -216,6 +220,27 @@ const Chatbot = ({ forecastData }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+    useEffect(() => {
+    if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto'; // Reset height
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`; // Set to scroll height
+    }
+  }, [inputValue]);
+
+    useEffect(() => {
+    const FORECAST_CSV_URL = 'https://feqnxbahwsomdociezti.supabase.co/storage/v1/object/public/forecast/forecast_output_revenue_and_units.csv';
+    
+    Papa.parse(FORECAST_CSV_URL, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      complete: (result) => {
+        setForecastData(result.data.filter(row => row.Date)); // Filter out any empty rows
+      },
+      error: (error) => console.error("Error parsing forecast CSV for chatbot:", error)
+    });
+  }, []);
 
   const callGemini = async (prompt) => {
     const payload = { contents: [{ parts: [{ text: prompt }] }] };
@@ -245,31 +270,38 @@ const Chatbot = ({ forecastData }) => {
       // --- FIX: Updated the entire prompt to handle the new forecast data structure ---
       const queryPlanningPrompt = `
         You are a data analysis planner. Your job is to understand a user's question and create a JSON plan to answer it.
-        First, classify the question into "historical", "forecast", or "general".
+        First, classify the question into "historical", "forecast", or "general" based on the following rules.
 
-        1.  **If the question is about past or current data** (e.g., "total sales"), the type is "historical".
+        --- IMPORTANT CONTEXT ---
+        - The current date is August 31, 2025. All historical data ends on this date.
+        - Any user query about dates ON OR BEFORE August 31, 2025, MUST be classified as "historical".
+        - Any user query about dates AFTER August 31, 2025, MUST be classified as "forecast".
+        - For relative dates: "last 3 months" means June, July, and August 2025. "Next 2 months" means September and October 2025.
+        - The date context is the most important factor for deciding between historical and forecast.
+        ---
+
+        1.  **If the question is "historical"**:
             -   The plan queries a Supabase table named "new_sales_data".
             -   JSON must have: "queryType": "historical", "select", "filters", and "operation".
 
-        2.  **If the question is about future data** (e.g., "what is the forecast"), the type is "forecast".
+        2.  **If the question is "forecast"**:
             -   The plan processes a local array of forecast data.
             -   Available forecast columns: "Date", "Category", "Revenue_Forecast", "Units_Sold_Forecast".
             -   Valid Categories are: "Clothing", "Electronics", "Furniture", "Groceries", "Toys".
-            -   JSON must have: "queryType": "forecast", "operation", "timeframeInDays", and "categories" (an array of strings).
-            -   If the user specifies one or more categories, put them in the "categories" array.
-            -   If the user asks for "all categories" or does not specify any, the "categories" array should be empty or null.
+            -   JSON must have: "queryType": "forecast", "operation" (with method and column), "timeframeInDays", and "categories" (an array of strings).
+            -   The "categories" value MUST be an array. If the user asks for "all categories" or does not specify any, the value should be null.
             -   If the user asks for "demand forecast", the target column is "Units_Sold_Forecast".
             -   If the user asks for "sales forecast" or "revenue forecast", the target column is "Revenue_Forecast".
 
-        3.  **If the question is general conversation**, the type is "general".
+        3.  **If the question is "general" conversation**, the type is "general".
             -   JSON must have: "queryType": "general".
 
         --- EXAMPLES ---
-        User Question: "total revenue for toys last month"
-        Result: {"queryType": "historical", "select": "Revenue", "filters": [{"column": "Category", "operator": "eq", "value": "Toys"}], "operation": {"method": "SUM", "column": "Revenue"}}
+        User Question: "total revenue for toys in august 2025"
+        Result: {"queryType": "historical", "select": "Revenue", "filters": [{"column": "Category", "operator": "eq", "value": "Toys"}, {"column": "Date", "operator": "gte", "value": "2025-08-01"}, {"column": "Date", "operator": "lte", "value": "2025-08-31"}], "operation": {"method": "SUM", "column": "Revenue"}}
 
-        User Question: "what is the total sales forecast for the next 30 days for electronics?"
-        Result: {"queryType": "forecast", "operation": {"method": "SUM", "column": "Revenue_Forecast"}, "timeframeInDays": 30, "categories": ["Electronics"]}
+        User Question: "what is the total sales forecast for the next 30 days for furniture?"
+        Result: {"queryType": "forecast", "operation": {"method": "SUM", "column": "Revenue_Forecast"}, "timeframeInDays": 30, "categories": ["Furniture"]}
 
         User Question: "predict the average demand for next week for toys and clothing"
         Result: {"queryType": "forecast", "operation": {"method": "AVG", "column": "Units_Sold_Forecast"}, "timeframeInDays": 7, "categories": ["Toys", "Clothing"]}
@@ -358,6 +390,12 @@ const Chatbot = ({ forecastData }) => {
     } finally {
       setIsLoading(false);
     }
+ };
+      const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault(); // Prevent new line
+        handleSendMessage();
+    }
   };
 
   return (
@@ -370,7 +408,7 @@ const Chatbot = ({ forecastData }) => {
           </div>
           <button onClick={() => setIsOpen(false)} className="text-white hover:text-cyan-200 text-2xl leading-none">&times;</button>
         </div>
-        <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50">
+        <div className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50 custom-scrollbar">
           {messages.map((msg, index) => (
             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`px-4 py-2 rounded-xl max-w-[75%] break-words ${msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>{msg.text}</div>
@@ -380,8 +418,19 @@ const Chatbot = ({ forecastData }) => {
           <div ref={messagesEndRef} />
         </div>
         <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white flex items-center">
-          <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder="Ask about sales or forecasts..." className="flex-grow p-2 border border-gray-300 rounded-l-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900" disabled={isLoading}/>
-          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-r-full hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm" disabled={isLoading}>Send</button>
+           <textarea
+            ref={textareaRef}
+            rows="1"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about sales or forecasts..."
+            className="flex-grow p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 resize-none overflow-y-auto max-h-24 custom-scrollbar"
+            disabled={isLoading}
+            
+          />
+          {/* --- FIX: Changed rounded-r-full to rounded-r-lg for consistency --- */}
+          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm self-end" disabled={isLoading}>Send</button>
         </form>
       </div>
       <button onClick={() => setIsOpen(!isOpen)} className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-3xl cursor-pointer hover:scale-110 transition-transform duration-200 ease-in-out z-50 focus:outline-none focus:ring-4 focus:ring-blue-300" aria-label={isOpen ? "Close chat" : "Open chat"}>{isOpen ? '✕' : '💬'}</button>

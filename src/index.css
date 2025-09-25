@@ -27,3 +27,24 @@ body, html, #root {
   overflow-x: hidden; 
 }
 
+/* In src/index.css */
+
+/* --- Custom Scrollbar Styles for Chatbot --- */
+/* For Webkit browsers like Chrome, Safari, Edge */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Makes the track invisible */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4A5568; /* A neutral dark gray for the bar */
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #718096; /* A lighter gray on hover */
+}
+

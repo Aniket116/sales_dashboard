@@ -1049,8 +1049,6 @@ const { trendData, compositionData, regionalData, demandData, inventoryTrendData
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     
-    // Simple check to see if user is "logged in"
-    // In a real app, you might use localStorage or a more robust auth check
     useEffect(() => {
         const loggedIn = localStorage.getItem('isAuthenticated');
         if (loggedIn === 'true') {
@@ -1071,7 +1069,10 @@ function App() {
     return (
         <Router>
             <Routes>
-                <Route path="/login" element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
+                {/* --- FIX: If authenticated, redirect from /login to /dashboard --- */}
+                <Route path="/login" element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
+                
+                {/* --- FIX: The main catch-all now has a nested route for the root path --- */}
                 <Route path="/*" element={isAuthenticated ? <AppLayout onLogout={handleLogout} /> : <Navigate to="/login" />} />
             </Routes>
         </Router>
@@ -1080,12 +1081,18 @@ function App() {
 const AppLayout = ({ onLogout }) => (
     <div className="bg-gray-900 text-white min-h-screen">
         <TopBar onLogout={onLogout} />
-        {/* This div provides the consistent padding for all pages */}
         <div className="pt-24 px-4 md:px-8">
             <Routes>
-                <Route path="/" element={<Dashboard />} />
+                {/* --- FIX: Define the root path to redirect to /dashboard --- */}
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                
+                {/* --- FIX: The dashboard is now explicitly at /dashboard --- */}
+                <Route path="/dashboard" element={<Dashboard />} />
+                
                 <Route path="/manage-data" element={<ManageDataPage />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                
+                {/* --- FIX: The final catch-all now redirects to /dashboard as well --- */}
+                <Route path="*" element={<Navigate to="/dashboard" />} />
             </Routes>
         </div>
     </div>

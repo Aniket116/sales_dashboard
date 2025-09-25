@@ -4,15 +4,16 @@ import { Link } from 'react-router-dom';
 const TopBar = ({ onLogout }) => {
   return (
     <header className="fixed top-0 left-0 right-0 bg-gray-800 shadow-md p-4 flex justify-between items-center z-50">
-      {/* --- FIX: Changed items-center to items-baseline for proper vertical alignment --- */}
+      {/* Left side: Branding and Navigation */}
       <div className="flex items-baseline space-x-6">
         <h1 className="text-2xl font-bold text-cyan-400">BizMitra</h1>
         <nav className="flex items-center space-x-4">
-            <Link to="/" className="text-sm font-medium text-gray-300 hover:text-cyan-400">Dashboard</Link>
+            <Link to="/dashboard" className="text-sm font-medium text-gray-300 hover:text-cyan-400">Dashboard</Link>
             <Link to="/manage-data" className="text-sm font-medium text-gray-300 hover:text-cyan-400">Manage Data</Link>
         </nav>
       </div>
 
+      {/* Right side: User info and Logout */}
       <div className="flex items-center space-x-4">
         <div className="text-right">
           <p className="text-sm font-semibold text-white">Mahendra</p>
