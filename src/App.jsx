@@ -540,7 +540,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from './supabaseClient';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, ScatterChart, Scatter,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell
@@ -1069,31 +1069,48 @@ function App() {
     return (
         <Router>
             <Routes>
-                {/* --- FIX: If authenticated, redirect from /login to /dashboard --- */}
+                {/* --- FIX: The root path now correctly handles the logic --- */}
+                <Route path="/" element={!isAuthenticated ? <Navigate to="/login" /> : <Navigate to="/dashboard" />} />
+
                 <Route path="/login" element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
                 
-                {/* --- FIX: The main catch-all now has a nested route for the root path --- */}
-                <Route path="/*" element={isAuthenticated ? <AppLayout onLogout={handleLogout} /> : <Navigate to="/login" />} />
+                {/* --- FIX: All authenticated routes are now nested inside AppLayout --- */}
+                <Route element={<AppLayout onLogout={handleLogout} />}>
+                    <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
+                    <Route path="/manage-data" element={isAuthenticated ? <ManageDataPage /> : <Navigate to="/login" />} />
+                </Route>
+
+                {/* A final catch-all for any other path */}
+                <Route path="*" element={<Navigate to="/" />} />
             </Routes>
         </Router>
     );
 }
+// const AppLayout = ({ onLogout }) => (
+//     <div className="bg-gray-900 text-white min-h-screen">
+//         <TopBar onLogout={onLogout} />
+//         <div className="pt-24 px-4 md:px-8">
+//             <Routes>
+//                 {/* --- FIX: Define the root path to redirect to /dashboard --- */}
+//                 <Route path="/" element={<Navigate to="/dashboard" />} />
+                
+//                 {/* --- FIX: The dashboard is now explicitly at /dashboard --- */}
+//                 <Route path="/dashboard" element={<Dashboard />} />
+                
+//                 <Route path="/manage-data" element={<ManageDataPage />} />
+                
+//                 {/* --- FIX: The final catch-all now redirects to /dashboard as well --- */}
+//                 <Route path="*" element={<Navigate to="/dashboard" />} />
+//             </Routes>
+//         </div>
+//     </div>
+// );
 const AppLayout = ({ onLogout }) => (
     <div className="bg-gray-900 text-white min-h-screen">
         <TopBar onLogout={onLogout} />
         <div className="pt-24 px-4 md:px-8">
-            <Routes>
-                {/* --- FIX: Define the root path to redirect to /dashboard --- */}
-                <Route path="/" element={<Navigate to="/dashboard" />} />
-                
-                {/* --- FIX: The dashboard is now explicitly at /dashboard --- */}
-                <Route path="/dashboard" element={<Dashboard />} />
-                
-                <Route path="/manage-data" element={<ManageDataPage />} />
-                
-                {/* --- FIX: The final catch-all now redirects to /dashboard as well --- */}
-                <Route path="*" element={<Navigate to="/dashboard" />} />
-            </Routes>
+            {/* Outlet will render the matched child route (Dashboard or ManageDataPage) */}
+            <Outlet />
         </div>
     </div>
 );
