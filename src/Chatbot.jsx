@@ -215,7 +215,7 @@ const Chatbot = () => {
 
   // --- Gemini API Configuration ---
  const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyAezt_I6fOFQXrw2bq8wG_E9Ia3UtHwtXc";
- const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+ const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -320,6 +320,8 @@ const Chatbot = () => {
 
       const jsonResponse = await callGemini(queryPlanningPrompt);
       const plan = JSON.parse(jsonResponse.replace(/```json|```/g, '').trim());
+      console.log(jsonResponse);
+      console.log(plan);
 
       let finalAnswer = "";
       let calculatedResult;

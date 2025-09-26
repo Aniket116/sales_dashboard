@@ -15,7 +15,7 @@ const TopBar = ({ onLogout }) => {
 
       <div className="flex items-center space-x-4">
         <div className="text-right">
-          <p className="text-sm font-semibold text-white">Admin</p>
+          <p className="text-sm font-semibold text-white">Mahendra</p>
           <p className="text-xs text-gray-400">Administrator</p>
         </div>
         <button 
